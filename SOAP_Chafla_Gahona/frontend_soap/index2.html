@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Gestión de Artículos</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 30px;
+      background: #f4f6f8;
+    }
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #007bff;
+      color: white;
+    }
+    .btn {
+      padding: 6px 10px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: white;
+      font-size: 14px;
+    }
+    .btn-update { background: #28a745; }
+    .btn-delete { background: #dc3545; }
+    .btn-search {
+      background: #007bff;
+      margin-left: 10px;
+    }
+    .btn:hover {
+      opacity: 0.85;
+    }
+    .low-stock {
+      background: #fff3cd;
+      color: #856404;
+      font-weight: bold;
+    }
+    .message {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .success { background: #d4edda; color: #155724; }
+    .error { background: #f8d7da; color: #721c24; }
+    input {
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 250px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Gestión de Artículos</h1>
+
+    <div>
+      <input type="text" id="codigoBuscar" placeholder="Buscar artículo por código..." />
+      <button class="btn btn-search" onclick="buscarArticuloSOAP()">Buscar (SOAP)</button>
+      <button class="btn btn-search" onclick="loadArticulosREST()">Listar todos (REST)</button>
+    </div>
+
+    <div id="message"></div>
+
+    <table id="tablaArticulos">
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Nombre</th>
+          <th>Categoría</th>
+          <th>Precio Compra</th>
+          <th>Precio Venta</th>
+          <th>Stock</th>
+          <th>Stock Mínimo</th>
+          <th>Proveedor</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    const REST_API = "http://localhost:8080/api/articulos";
+    const SOAP_URL = "http://localhost:9091/ws";
+    const SOAP_USER = "admin";
+    const SOAP_PASS = "admin123";
+
+    // ====== CARGAR TODOS (REST) ======
+    async function loadArticulosREST() {
+      try {
+        const res = await fetch(REST_API);
+        if (!res.ok) throw new Error("No se pudo obtener los artículos.");
+        const data = await res.json();
+        renderTabla(data);
+        showMessage("Artículos cargados correctamente.", "success");
+      } catch (err) {
+        showMessage("Error al cargar artículos: " + err.message, "error");
+      }
+    }
+
+    // ====== BUSCAR POR SOAP ======
+    async function buscarArticuloSOAP() {
+      const codigo = document.getElementById("codigoBuscar").value.trim();
+      if (!codigo) {
+        showMessage("Ingrese un código para buscar.", "error");
+        return;
+      }
+
+      const soapEnvelope = `
+        <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                          xmlns:art="http://www.example.com/soap/articulos">
+          <soapenv:Header/>
+          <soapenv:Body>
+            <art:ConsultarArticuloRequest>
+              <art:codigo>${codigo}</art:codigo>
+            </art:ConsultarArticuloRequest>
+          </soapenv:Body>
+        </soapenv:Envelope>
+      `;
+
+      try {
+        const res = await fetch(SOAP_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "text/xml",
+            "Authorization": "Basic " + btoa(SOAP_USER + ":" + SOAP_PASS)
+          },
+          body: soapEnvelope
+        });
+
+        if (!res.ok) throw new Error("Error en la solicitud SOAP.");
+
+        const text = await res.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, "text/xml");
+
+        const getText = (doc, name) => {
+          const el = doc.getElementsByTagName(name)[0];
+          return el ? el.textContent : null;
+        };
+
+        const codigoResp = getText(xml, "codigo");
+        if (!codigoResp) {
+          showMessage("No existe el artículo con ese código.", "error");
+          return;
+        }
+
+        const art = {
+          codigo: codigoResp,
+          nombre: getText(xml, "nombre"),
+          categoria: getText(xml, "categoria"),
+          precioCompra: getText(xml, "precioCompra"),
+          precioVenta: getText(xml, "precioVenta"),
+          stock: getText(xml, "stock"),
+          stockMinimo: getText(xml, "stockMinimo"),
+          proveedor: getText(xml, "proveedor")
+        };
+
+        renderTabla([art]);
+        showMessage(`Artículo ${codigo} encontrado.`, "success");
+      } catch (err) {
+        showMessage("Error al buscar artículo: " + err.message, "error");
+      }
+    }
+
+    // ====== ACTUALIZAR (REST) ======
+    async function actualizarArticulo(codigo) {
+      const nuevoStock = prompt("Ingrese el nuevo stock para el artículo " + codigo + ":");
+      if (nuevoStock === null) return;
+
+      try {
+        const res = await fetch(`${REST_API}/${codigo}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ stock: parseInt(nuevoStock) })
+        });
+
+        if (res.ok) {
+          showMessage("Artículo actualizado correctamente.", "success");
+          loadArticulosREST();
+        } else {
+          showMessage("Error al actualizar el artículo.", "error");
+        }
+      } catch (err) {
+        showMessage("Error al actualizar: " + err.message, "error");
+      }
+    }
+
+    // ====== ELIMINAR (REST) ======
+    async function eliminarArticulo(codigo) {
+      if (!confirm(`¿Seguro que desea eliminar el artículo ${codigo}?`)) return;
+
+      try {
+        const res = await fetch(`${REST_API}/${codigo}`, { method: "DELETE" });
+        if (res.ok) {
+          showMessage("Artículo eliminado correctamente.", "success");
+          loadArticulosREST();
+        } else {
+          showMessage("Error al eliminar el artículo.", "error");
+        }
+      } catch (err) {
+        showMessage("Error al eliminar: " + err.message, "error");
+      }
+    }
+
+    // ====== RENDERIZAR TABLA ======
+    function renderTabla(articulos) {
+      const tbody = document.querySelector("#tablaArticulos tbody");
+      tbody.innerHTML = "";
+
+      articulos.forEach(a => {
+        const stockVal = parseInt(a.stock || "0");
+        const minimoVal = parseInt(a.stockMinimo || "0");
+        const lowStock = !isNaN(stockVal) && !isNaN(minimoVal) && stockVal < minimoVal;
+        const tr = document.createElement("tr");
+        const safeCodigo = String(a.codigo || "").replace(/'/g, "\\'");
+        tr.innerHTML = `
+          <td>${a.codigo || ""}</td>
+          <td>${a.nombre || ""}</td>
+          <td>${a.categoria || ""}</td>
+          <td>${a.precioCompra || ""}</td>
+          <td>${a.precioVenta || ""}</td>
+          <td class="${lowStock ? "low-stock" : ""}">${a.stock || ""}</td>
+          <td>${a.stockMinimo || ""}</td>
+          <td>${a.proveedor || ""}</td>
+          <td>
+            <button class="btn btn-update" onclick="actualizarArticulo('${safeCodigo}')">Actualizar</button>
+            <button class="btn btn-delete" onclick="eliminarArticulo('${safeCodigo}')">Eliminar</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ====== MENSAJES ======
+    function showMessage(msg, type) {
+      const div = document.getElementById("message");
+      div.innerHTML = `<div class="message ${type}">${msg}</div>`;
+    }
+
+    // ====== AUTO CARGA ======
+    loadArticulosREST();
+  </script>
+</body>
+</html>

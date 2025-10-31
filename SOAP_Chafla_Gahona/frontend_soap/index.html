@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Artículos (SOAP)</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Gestión de Artículos (SOAP)</h1>
+    <nav class="menu-bar" aria-label="Menú principal">
+      <button class="menu-item active" data-target="section-ingresar">Ingresar</button>
+      <button class="menu-item" data-target="section-listar">Listar</button>
+      <button class="menu-item" data-target="section-buscar">Buscar</button>
+      <button class="menu-item" data-target="section-actualizar">Actualizar</button>
+    </nav>
+
+  <!-- Sección: Ingresar -->
+  <section id="section-ingresar">
+    <!-- Formulario de inserción -->
+    <form id="formInsertar">
+    <h2>Insertar Artículo</h2>
+    <label>Código:</label>
+    <input type="text" id="codigo" required>
+    <label>Nombre:</label>
+    <input type="text" id="nombre" required>
+    <label>Categoría:</label>
+    <input type="text" id="categoria" required>
+    <label>Precio Compra:</label>
+    <input type="number" id="precioCompra" step="0.01" required>
+    <label>Precio Venta:</label>
+    <input type="number" id="precioVenta" step="0.01" required>
+    <label>Stock:</label>
+    <input type="number" id="stock" required>
+    <label>Stock Mínimo:</label>
+    <input type="number" id="stockMinimo" required>
+    <label>Proveedor:</label>
+    <input type="text" id="proveedor" required>
+    <button type="submit">Insertar</button>
+    </form>
+  </section>
+
+  <!-- Sección: Buscar -->
+  <section id="section-buscar" class="hidden">
+    <!-- Formulario de consulta -->
+    <form id="formConsultar">
+    <h2>Buscar Artículo por Código</h2>
+    <label>Código:</label>
+    <input type="text" id="buscarCodigo" required>
+    <button type="submit">Buscar</button>
+    </form>
+  </section>
+
+  <!-- Sección: Actualizar -->
+  <section id="section-actualizar" class="hidden">
+    <!-- Formulario de actualización -->
+    <form id="formActualizar">
+    <h2>Actualizar Artículo</h2>
+    <label>Código (existente):</label>
+    <input type="text" id="updCodigo" required>
+    <label>Nombre:</label>
+    <input type="text" id="updNombre">
+    <label>Categoría:</label>
+    <input type="text" id="updCategoria">
+    <label>Precio Compra:</label>
+    <input type="number" id="updPrecioCompra" step="0.01">
+    <label>Precio Venta:</label>
+    <input type="number" id="updPrecioVenta" step="0.01">
+    <label>Stock:</label>
+    <input type="number" id="updStock">
+    <label>Stock Mínimo:</label>
+    <input type="number" id="updStockMinimo">
+    <label>Proveedor:</label>
+    <input type="text" id="updProveedor">
+    <button type="submit">Actualizar</button>
+    </form>
+  </section>
+
+  <!-- Sección: Listar -->
+  <section id="section-listar" class="hidden">
+    <div class="list-actions" style="max-width:500px;margin:0 auto 20px;">
+      <button id="btnListar" type="button">Listar Artículos</button>
+    </div>
+    <div id="list-container"></div>
+  </section>
+
+  <div class="resultado" id="resultado">
+    <div class="result-header">
+      <h3>Resultado</h3>
+      <div class="result-meta">
+        <span id="result-status" class="badge neutral">Esperando</span>
+        <span id="result-time" class="timestamp"></span>
+        <button id="toggleRaw" class="raw-toggle">Ver XML crudo</button>
+      </div>
+    </div>
+
+    <div id="result-body" class="result-body">
+      <!-- Aquí se renderiza la tabla o mensajes de estado -->
+      <p class="hint">Envía una consulta o inserción para ver el resultado aquí.</p>
+    </div>
+
+    <pre id="rawXml" class="raw-xml" style="display:none;" aria-hidden="true"></pre>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
